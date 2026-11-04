@@ -1,0 +1,74 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  core:
+    name: Core tests (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace --release
+      - name: FFI smoke test (Python bindings)
+        run: |
+          cargo build --release -p nexus-core
+          cargo run --release -p uniffi-bindgen -- generate --library target/release/libnexus_core.so --language python --out-dir target/py
+          cp target/release/libnexus_core.so target/py/
+          python3 tests/ffi_smoke.py target/py
+
+  windows:
+    name: Windows app
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime: [win-x64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@v2
+      - name: Cache uniffi-bindgen-cs
+        id: bindgen-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/uniffi-bindgen-cs.exe
+          key: uniffi-bindgen-cs-v0.11.1+v0.31.0
+      - name: Install uniffi-bindgen-cs
+        if: steps.bindgen-cache.outputs.cache-hit != 'true'
+        run: cargo install uniffi-bindgen-cs --git https://github.com/NordSecurity/uniffi-bindgen-cs --tag v0.11.1+v0.31.0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Build
+        shell: pwsh
+        run: ./build.ps1 -Runtime ${{ matrix.runtime }}
+      - name: Zip
+        shell: pwsh
+        run: Compress-Archive -Path dist/NexusFiles-${{ matrix.runtime }}/* -DestinationPath NexusFiles-${{ matrix.runtime }}.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NexusFiles-${{ matrix.runtime }}
+          path: NexusFiles-${{ matrix.runtime }}.zip
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: NexusFiles-${{ matrix.runtime }}.zip

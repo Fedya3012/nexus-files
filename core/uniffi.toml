@@ -1,0 +1,9 @@
+[bindings.csharp]
+namespace = "Nexus.Core"
+global_methods_class_name = "NexusNative"
+access_modifier = "public"
+cdylib_name = "nexus_core"
+
+[bindings.kotlin]
+package_name = "app.nexusfiles.core"
+cdylib_name = "nexus_core"

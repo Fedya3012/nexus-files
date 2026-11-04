@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <RootNamespace>NexusFiles</RootNamespace>
+    <AssemblyName>NexusFiles</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <!-- Generated UniFFI bindings use unsafe pointer code. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Unpackaged + self-contained: unzip and run NexusFiles.exe, no installer or runtime needed. -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <SelfContained>true</SelfContained>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <ApplicationIcon>Assets\NexusFiles.ico</ApplicationIcon>
+    <Version>0.1.0</Version>
+    <Product>Nexus Files</Product>
+    <!-- Warnings from the generated bindings are not ours to fix. -->
+    <NoWarn>$(NoWarn);CS8618;CS8625;CS0108;CS8600;CS8601;CS8602;CS8603;CS8604</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Where build.ps1 puts the Rust outputs. -->
+    <NexusNativeDir>$(MSBuildThisFileDirectory)..\..\..\target\nexus-native\</NexusNativeDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(NexusNativeDir)nexus_core.cs" Link="Native\nexus_core.cs" />
+    <None Include="$(NexusNativeDir)nexus_core.dll" Link="nexus_core.dll" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260921001" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.9457" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+  </ItemGroup>
+
+  <Target Name="CheckNativeCore" BeforeTargets="BeforeBuild">
+    <Error Condition="!Exists('$(NexusNativeDir)nexus_core.cs')" Text="Rust core bindings missing. Run build.ps1 at the repository root first." />
+  </Target>
+</Project>

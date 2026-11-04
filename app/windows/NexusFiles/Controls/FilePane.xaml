@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="NexusFiles.Controls.FilePane"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:NexusFiles.ViewModels"
+    xmlns:local="using:NexusFiles.Controls"
+    AllowDrop="True">
+
+    <UserControl.Resources>
+        <!-- "Chi tiết": name, modified, type, size (mockup 01). -->
+        <DataTemplate x:Key="DetailsTemplate" x:DataType="vm:FileItem">
+            <Grid Height="32" ColumnSpacing="8" Opacity="{x:Bind ItemOpacity, Mode=OneWay}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" MinWidth="160" />
+                    <ColumnDefinition Width="140" />
+                    <ColumnDefinition Width="110" />
+                    <ColumnDefinition Width="84" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <FontIcon Glyph="{x:Bind Glyph}" Foreground="{x:Bind GlyphBrush}" FontSize="16" />
+                    <TextBlock Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Foreground="{ThemeResource NxText1}" />
+                </StackPanel>
+                <TextBlock Grid.Column="1" Text="{x:Bind ModifiedText}" VerticalAlignment="Center" Foreground="{ThemeResource NxText2}" FontSize="13" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="2" Text="{x:Bind TypeText}" VerticalAlignment="Center" Foreground="{ThemeResource NxText2}" FontSize="13" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="3" Text="{x:Bind SizeText, Mode=OneWay}" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="{ThemeResource NxText2}" FontSize="13" />
+            </Grid>
+        </DataTemplate>
+
+        <!-- "Danh sách": compact single column. -->
+        <DataTemplate x:Key="ListTemplate" x:DataType="vm:FileItem">
+            <StackPanel Orientation="Horizontal" Spacing="10" Height="28" Opacity="{x:Bind ItemOpacity, Mode=OneWay}">
+                <FontIcon Glyph="{x:Bind Glyph}" Foreground="{x:Bind GlyphBrush}" FontSize="14" VerticalAlignment="Center" />
+                <TextBlock Text="{x:Bind Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- "Biểu tượng": tiles with shell thumbnails. -->
+        <DataTemplate x:Key="IconTemplate" x:DataType="vm:FileItem">
+            <Grid Width="120" Height="132" Padding="6" RowSpacing="6" Opacity="{x:Bind ItemOpacity, Mode=OneWay}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="80" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <FontIcon Glyph="{x:Bind Glyph}" Foreground="{x:Bind GlyphBrush}" FontSize="44"
+                          Visibility="{x:Bind local:Bind.Collapsed(HasThumbnail), Mode=OneWay}" />
+                <Image Source="{x:Bind Thumbnail, Mode=OneWay}" Stretch="Uniform" />
+                <TextBlock Grid.Row="1" Text="{x:Bind Name}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
+                           TextAlignment="Center" HorizontalAlignment="Center" FontSize="12" />
+            </Grid>
+        </DataTemplate>
+
+        <Style x:Key="CompactItemStyle" TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
+            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="Padding" Value="12,0,16,0" />
+            <Setter Property="Margin" Value="4,0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid x:Name="Root" Background="{ThemeResource NxBackground}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Active pane marker (accent line on top). -->
+        <Border x:Name="ActiveBar" Height="2" VerticalAlignment="Top" Background="{ThemeResource NxAccent}" Visibility="Collapsed" />
+
+        <!-- Pane header: "Dự án 2026 · 23 mục" + sort + view toggles. -->
+        <Grid Padding="14,8,8,6" ColumnSpacing="6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <TextBlock x:Name="TitleText" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" MaxWidth="320" />
+                <TextBlock x:Name="SummaryText" Foreground="{ThemeResource NxText3}" FontSize="13" VerticalAlignment="Bottom" />
+                <ProgressRing x:Name="LoadingRing" Width="14" Height="14" IsActive="False" />
+            </StackPanel>
+            <DropDownButton x:Name="SortButton" Grid.Column="1" Padding="8,3" FontSize="12" CornerRadius="12"
+                            Background="{ThemeResource NxSidebar}" BorderThickness="0">
+                <DropDownButton.Content>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE8CB;" FontSize="12" />
+                        <TextBlock x:Name="SortText" />
+                    </StackPanel>
+                </DropDownButton.Content>
+                <DropDownButton.Flyout>
+                    <MenuFlyout Placement="BottomEdgeAlignedRight">
+                        <MenuFlyoutItem Text="Tên" Tag="Name" Click="OnSortMenu" />
+                        <MenuFlyoutItem Text="Ngày sửa" Tag="Modified" Click="OnSortMenu" />
+                        <MenuFlyoutItem Text="Loại" Tag="Type" Click="OnSortMenu" />
+                        <MenuFlyoutItem Text="Kích thước" Tag="Size" Click="OnSortMenu" />
+                    </MenuFlyout>
+                </DropDownButton.Flyout>
+            </DropDownButton>
+            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                <ToggleButton x:Name="DetailsToggle" Style="{StaticResource NxIconToggle}" Width="30" Height="28" Click="OnViewToggle" Tag="Details"
+                              ToolTipService.ToolTip="Chi tiết (Ctrl+1)">
+                    <FontIcon Glyph="&#xE8FD;" FontSize="13" />
+                </ToggleButton>
+                <ToggleButton x:Name="ListToggle" Style="{StaticResource NxIconToggle}" Width="30" Height="28" Click="OnViewToggle" Tag="List"
+                              ToolTipService.ToolTip="Danh sách (Ctrl+2)">
+                    <FontIcon Glyph="&#xE8A4;" FontSize="13" />
+                </ToggleButton>
+                <ToggleButton x:Name="IconsToggle" Style="{StaticResource NxIconToggle}" Width="30" Height="28" Click="OnViewToggle" Tag="Icons"
+                              ToolTipService.ToolTip="Biểu tượng (Ctrl+3)">
+                    <FontIcon Glyph="&#xF0E2;" FontSize="13" />
+                </ToggleButton>
+            </StackPanel>
+        </Grid>
+
+        <!-- Column headers (Details view only); click to sort. -->
+        <Grid x:Name="ColumnHeaders" Grid.Row="1" Margin="16,0,20,2" ColumnSpacing="8"
+              BorderBrush="{ThemeResource NxBorderSubtle}" BorderThickness="0,0,0,1" Padding="0,0,0,2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="160" />
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="110" />
+                <ColumnDefinition Width="84" />
+            </Grid.ColumnDefinitions>
+            <Button x:Name="NameHeader" Style="{StaticResource NxColumnHeader}" Content="Tên" Tag="Name" Click="OnColumnHeader" Margin="-8,0,0,0" />
+            <Button x:Name="ModifiedHeader" Grid.Column="1" Style="{StaticResource NxColumnHeader}" Content="Ngày sửa" Tag="Modified" Click="OnColumnHeader" Margin="-8,0,0,0" />
+            <Button x:Name="TypeHeader" Grid.Column="2" Style="{StaticResource NxColumnHeader}" Content="Loại" Tag="Type" Click="OnColumnHeader" Margin="-8,0,0,0" />
+            <Button x:Name="SizeHeader" Grid.Column="3" Style="{StaticResource NxColumnHeader}" Content="Kích thước" Tag="Size" Click="OnColumnHeader" HorizontalContentAlignment="Right" Margin="0,0,-8,0" />
+        </Grid>
+
+        <Grid Grid.Row="2">
+            <ListView x:Name="List"
+                      SelectionMode="Extended"
+                      IsMultiSelectCheckBoxEnabled="False"
+                      ItemContainerStyle="{StaticResource CompactItemStyle}"
+                      ItemTemplate="{StaticResource DetailsTemplate}"
+                      CanDragItems="True"
+                      AllowDrop="True"
+                      Padding="0,2,0,8" />
+            <GridView x:Name="Tiles"
+                      Visibility="Collapsed"
+                      SelectionMode="Extended"
+                      IsMultiSelectCheckBoxEnabled="False"
+                      ItemTemplate="{StaticResource IconTemplate}"
+                      CanDragItems="True"
+                      AllowDrop="True"
+                      Padding="10,4,10,8" />
+            <StackPanel x:Name="EmptyState" Visibility="Collapsed" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8" MaxWidth="360">
+                <FontIcon x:Name="EmptyIcon" Glyph="&#xE8B7;" FontSize="36" Foreground="{ThemeResource NxText3}" />
+                <TextBlock x:Name="EmptyText" TextAlignment="Center" TextWrapping="Wrap" Foreground="{ThemeResource NxText2}" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>
