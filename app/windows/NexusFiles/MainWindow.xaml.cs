@@ -1039,6 +1039,10 @@ public sealed partial class MainWindow : Window
         _toastTimer.Start();
     }
 
+    /// <summary>What the launch test checks: tabs open and the folder listed.</summary>
+    public string SmokeSummary() =>
+        $"tabs={_tabs.Count} path={ActivePane?.CurrentPath} items={ActivePane?.Items.Count} error={ActivePane?.ErrorText}";
+
     public void ShowError(string message)
     {
         ErrorBar.Message = message;

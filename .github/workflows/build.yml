@@ -60,6 +60,17 @@ jobs:
       - name: Build
         shell: pwsh
         run: ./build.ps1 -Runtime ${{ matrix.runtime }}
+      - name: Launch test
+        shell: pwsh
+        run: |
+          $report = Join-Path $env:RUNNER_TEMP "smoke.txt"
+          $env:NEXUS_SMOKE_TEST = $report
+          New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\sample\Thư mục con" | Out-Null
+          1..200 | ForEach-Object { Set-Content "$env:RUNNER_TEMP\sample\tệp $_.txt" "xin chào $_" }
+          $p = Start-Process "dist/NexusFiles-${{ matrix.runtime }}/NexusFiles.exe" -ArgumentList "`"$env:RUNNER_TEMP\sample`"" -PassThru
+          if (-not $p.WaitForExit(90000)) { $p.Kill(); Write-Host "App did not quit" }
+          if (Test-Path $report) { Get-Content $report } else { Write-Host "No report written" }
+          if (-not (Test-Path $report) -or (Select-String -Path $report -Pattern '^error' -Quiet) -or -not (Select-String -Path $report -Pattern 'items=201' -Quiet)) { exit 1 }
       - name: Upload generated bindings
         if: always()
         uses: actions/upload-artifact@v4
