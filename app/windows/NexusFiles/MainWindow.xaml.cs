@@ -59,9 +59,9 @@ public sealed partial class MainWindow : Window
         WireSplitters();
         RegisterAccelerators();
         OmnibarView.Activated += OnOmniActivated;
-        OmnibarView.PathEntered += (_, e) => _ = OpenPathAsync(e.path, e.target);
+        OmnibarView.PathEntered += (__, e) => _ = OpenPathAsync(e.path, e.target);
         OmnibarView.Closed += (_, _) => FocusActivePane();
-        InspectorView.OpenFolderRequested += (_, p) => _ = ActivePane?.NavigateAsync(p);
+        InspectorView.OpenFolderRequested += (__, p) => _ = ActivePane?.NavigateAsync(p);
         PinnedList.ItemsSource = _pins;
 
         _session = CoreHost.Core.LoadSession();
@@ -115,7 +115,7 @@ public sealed partial class MainWindow : Window
     private void RestoreTabs(string? startPath)
     {
         var settings = CoreHost.Settings;
-        if (settings.RestoreSession && _session.Tabs.Count > 0)
+        if (settings.RestoreSession && _session.Tabs.Length > 0)
         {
             foreach (var t in _session.Tabs)
             {
@@ -162,7 +162,7 @@ public sealed partial class MainWindow : Window
             Tag = tab,
             IconSource = new FontIconSource { Glyph = Icons.Folder },
         };
-        tab.PropertyChanged += (_, e) =>
+        tab.PropertyChanged += (__, e) =>
         {
             if (e.PropertyName == nameof(TabViewModel.Header))
             {
@@ -284,9 +284,9 @@ public sealed partial class MainWindow : Window
             {
                 if (s == ActivePaneView) UpdateSelectionInfo();
             };
-            pane.OpenRequested += (_, e) => _ = OpenItemAsync(e.item, e.target);
-            pane.CommandInvoked += (_, id) => _ = ExecuteAsync(id);
-            pane.DropRequested += (_, d) => StartTransfer(d.Sources, d.TargetFolder, d.Move);
+            pane.OpenRequested += (__, e) => _ = OpenItemAsync(e.item, e.target);
+            pane.CommandInvoked += (__, id) => _ = ExecuteAsync(id);
+            pane.DropRequested += (__, d) => StartTransfer(d.Sources, d.TargetFolder, d.Move);
         }
     }
 
@@ -378,7 +378,7 @@ public sealed partial class MainWindow : Window
         ForwardButton.IsEnabled = pane.CanGoForward;
         try
         {
-            _crumbs = NexusNative.PathSegments(pane.CurrentPath);
+            _crumbs = NexusNative.PathSegments(pane.CurrentPath).ToList();
             var drives = DrivesList.ItemsSource as IEnumerable<SidebarItem>;
             Crumbs.ItemsSource = _crumbs.Select((c, i) =>
             {
@@ -539,17 +539,17 @@ public sealed partial class MainWindow : Window
 
     private void WireSplitters()
     {
-        SidebarSplitter.Dragged += (_, dx) =>
+        SidebarSplitter.Dragged += (__, dx) =>
         {
             _sidebarWidth = Math.Clamp(SidebarColumn.ActualWidth + dx, 160, 480);
             SidebarColumn.Width = new GridLength(_sidebarWidth);
         };
-        InspectorSplitter.Dragged += (_, dx) =>
+        InspectorSplitter.Dragged += (__, dx) =>
         {
             _inspectorWidth = Math.Clamp(InspectorColumn.ActualWidth - dx, 240, 640);
             InspectorColumn.Width = new GridLength(_inspectorWidth);
         };
-        PaneSplitter.Dragged += (_, dx) =>
+        PaneSplitter.Dragged += (__, dx) =>
         {
             var total = LeftColumn.ActualWidth + RightColumn.ActualWidth;
             if (total <= 0) return;
@@ -566,7 +566,7 @@ public sealed partial class MainWindow : Window
         void Add(VirtualKey key, VirtualKeyModifiers mods, string command, bool allowInTextBox = false)
         {
             var acc = new KeyboardAccelerator { Key = key, Modifiers = mods };
-            acc.Invoked += (_, args) =>
+            acc.Invoked += (__, args) =>
             {
                 if (OmnibarView.IsOpen && command != "app.palette") return;
                 if (!allowInTextBox && FocusManager.GetFocusedElement(RootGrid.XamlRoot) is TextBox) return;
@@ -765,8 +765,8 @@ public sealed partial class MainWindow : Window
     private void StartTransfer(List<string> sources, string target, bool move)
     {
         FileOperation op = move
-            ? new FileOperation.Move(sources, target, ConflictPolicy.KeepBoth)
-            : new FileOperation.Copy(sources, target, ConflictPolicy.KeepBoth);
+            ? new FileOperation.Move(sources.ToArray(), target, ConflictPolicy.KeepBoth)
+            : new FileOperation.Copy(sources.ToArray(), target, ConflictPolicy.KeepBoth);
         Enqueue(op);
     }
 
@@ -829,7 +829,7 @@ public sealed partial class MainWindow : Window
             box.Select(0, dot > 0 ? dot : name.Length);
         };
         string? newPath = null;
-        dialog.PrimaryButtonClick += (_, args) =>
+        dialog.PrimaryButtonClick += (__, args) =>
         {
             var newName = box.Text.Trim();
             if (newName == name) return;
@@ -881,7 +881,7 @@ public sealed partial class MainWindow : Window
         var next = items.Skip(lastIndex + 1).FirstOrDefault(i => !paths.Contains(i.FullPath))
                    ?? items.Take(Math.Max(0, lastIndex)).LastOrDefault(i => !paths.Contains(i.FullPath));
         if (next != null) pane.PendingSelection.Add(next.FullPath);
-        Enqueue(permanent ? new FileOperation.DeletePermanently(paths) : new FileOperation.Trash(paths));
+        Enqueue(permanent ? new FileOperation.DeletePermanently(paths.ToArray()) : new FileOperation.Trash(paths.ToArray()));
     }
 
     private void Undo()
@@ -975,12 +975,12 @@ public sealed partial class MainWindow : Window
             case JobState.CompletedWithErrors:
                 var first = j.Errors.FirstOrDefault();
                 ShowError(first != null
-                    ? $"{j.Title}: {j.Errors.Count} mục lỗi. {first.message} ({System.IO.Path.GetFileName(first.path)})"
+                    ? $"{j.Title}: {j.Errors.Length} mục lỗi. {first.Message} ({System.IO.Path.GetFileName(first.Path)})"
                     : $"{j.Title}: bỏ qua {j.Skipped} mục đã có sẵn.");
                 break;
             case JobState.Failed:
                 var e = j.Errors.FirstOrDefault();
-                ShowError(e != null ? $"{j.Title}: {e.message}" : $"{j.Title}: thất bại");
+                ShowError(e != null ? $"{j.Title}: {e.Message}" : $"{j.Title}: thất bại");
                 break;
             case JobState.Cancelled:
                 ShowToast($"Đã hủy: {j.Title}", undoable: j.Undoable);
@@ -995,7 +995,7 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void RenderJobsFlyout(List<JobStatus> jobs)
+    private void RenderJobsFlyout(JobStatus[] jobs)
     {
         JobsPanel.Children.Clear();
         foreach (var j in jobs.AsEnumerable().Reverse().Take(8))
@@ -1021,8 +1021,8 @@ public sealed partial class MainWindow : Window
                 JobState.Running => $"{j.FilesDone}/{j.FilesTotal} mục · {Format.Size(j.BytesDone)} / {Format.Size(j.BytesTotal)}",
                 JobState.Queued => "Đang chờ",
                 JobState.Completed => "Xong",
-                JobState.CompletedWithErrors => $"Xong, {j.Errors.Count} lỗi, bỏ qua {j.Skipped}",
-                JobState.Failed => "Lỗi: " + (j.Errors.FirstOrDefault()?.message ?? ""),
+                JobState.CompletedWithErrors => $"Xong, {j.Errors.Length} lỗi, bỏ qua {j.Skipped}",
+                JobState.Failed => "Lỗi: " + (j.Errors.FirstOrDefault()?.Message ?? ""),
                 _ => "Đã hủy",
             };
             panel.Children.Add(new TextBlock { Text = state, FontSize = 12, Foreground = Res.Brush("NxText3"), TextWrapping = TextWrapping.Wrap });
@@ -1116,7 +1116,7 @@ public sealed partial class MainWindow : Window
             var b = _normalBounds ?? new RectInt32(AppWindow.Position.X, AppWindow.Position.Y, AppWindow.Size.Width, AppWindow.Size.Height);
             var active = _current == null ? 0 : _tabs.IndexOf(_current);
             var session = new SessionState(
-                _tabs.Select(t => t.ToState()).ToList(),
+                _tabs.Select(t => t.ToState()).ToArray(),
                 (uint)Math.Max(0, active),
                 Sidebar.Visibility == Visibility.Visible,
                 InspectorView.Visibility == Visibility.Visible,

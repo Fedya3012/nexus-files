@@ -95,7 +95,7 @@ public sealed partial class Inspector : UserControl
                 break;
             case PreviewContent.Folder f:
                 subtitle = $"Thư mục · {f.Folders} thư mục, {f.Files} tệp";
-                if (f.FirstNames.Count > 0)
+                if (f.FirstNames.Length > 0)
                 {
                     FolderList.Visibility = Visibility.Visible;
                     FolderList.Children.Add(new TextBlock { Text = "BÊN TRONG", Style = (Style)Application.Current.Resources["NxSectionHeader"], Margin = new Thickness(0, 4, 0, 2) });

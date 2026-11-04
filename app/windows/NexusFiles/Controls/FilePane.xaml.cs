@@ -83,7 +83,7 @@ public sealed partial class FilePane : UserControl
     public IReadOnlyList<FileItem> SelectedItems => ActiveView.SelectedItems.OfType<FileItem>().ToList();
 
     public FileItem? FocusedItem =>
-        (FocusManager.GetFocusedElement(XamlRoot) as SelectorItem)?.Content as FileItem ?? SelectedItems.FirstOrDefault();
+        (FocusManager.GetFocusedElement(XamlRoot) as Microsoft.UI.Xaml.Controls.Primitives.SelectorItem)?.Content as FileItem ?? SelectedItems.FirstOrDefault();
 
     private void Rebind()
     {
@@ -119,7 +119,7 @@ public sealed partial class FilePane : UserControl
     private void ApplyViewMode()
     {
         if (_vm == null) return;
-        var selected = (List.Visibility == Visibility.Visible ? List : Tiles).SelectedItems.OfType<FileItem>().Select(i => i.FullPath).ToList();
+        var selected = (List.Visibility == Visibility.Visible ? (ListViewBase)List : Tiles).SelectedItems.OfType<FileItem>().Select(i => i.FullPath).ToList();
         var mode = _vm.ViewMode;
         List.ItemTemplate = (DataTemplate)Resources[mode == ViewMode.List ? "ListTemplate" : "DetailsTemplate"];
         List.Visibility = mode == ViewMode.Icons ? Visibility.Collapsed : Visibility.Visible;

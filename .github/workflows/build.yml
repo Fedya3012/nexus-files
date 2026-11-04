@@ -60,6 +60,13 @@ jobs:
       - name: Build
         shell: pwsh
         run: ./build.ps1 -Runtime ${{ matrix.runtime }}
+      - name: Upload generated bindings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bindings-${{ matrix.runtime }}
+          path: target/nexus-native/nexus_core.cs
+          if-no-files-found: ignore
       - name: Zip
         shell: pwsh
         run: Compress-Archive -Path dist/NexusFiles-${{ matrix.runtime }}/* -DestinationPath NexusFiles-${{ matrix.runtime }}.zip

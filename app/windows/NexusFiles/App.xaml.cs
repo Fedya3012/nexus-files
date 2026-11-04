@@ -13,7 +13,7 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
-        UnhandledException += (_, e) =>
+        UnhandledException += (__, e) =>
         {
             e.Handled = true;
             ShowError(e.Exception is NexusException ne ? Format.Error(ne) : e.Exception.Message);

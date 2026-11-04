@@ -104,13 +104,13 @@ public sealed partial class Omnibar : UserControl
         var items = new List<OmniItem>();
         void AddPlaces(string header)
         {
-            if (quick.Places.Count == 0) return;
+            if (quick.Places.Length == 0) return;
             items.Add(OmniItem.Header(header));
             items.AddRange(quick.Places.Select(OmniItem.FromPlace));
         }
         void AddCommands()
         {
-            if (quick.Commands.Count == 0) return;
+            if (quick.Commands.Length == 0) return;
             items.Add(OmniItem.Header("LỆNH"));
             items.AddRange(quick.Commands.Select(OmniItem.FromCommand));
         }
@@ -133,7 +133,7 @@ public sealed partial class Omnibar : UserControl
                 {
                     var recent = await Task.Run(() => CoreHost.Core.RecentFolders(8));
                     if (gen != _generation) return;
-                    if (recent.Count > 0)
+                    if (recent.Length > 0)
                     {
                         items.Add(OmniItem.Header("GẦN ĐÂY"));
                         items.AddRange(recent.Select(p => OmniItem.FromPlace(new PlaceMatch(p, [], 0))));
@@ -155,13 +155,13 @@ public sealed partial class Omnibar : UserControl
                 }
                 if (gen != _generation) return;
                 items.Clear();
-                if (found.Files.Count > 0)
+                if (found.Files.Length > 0)
                 {
                     var more = found.Incomplete ? "+" : "";
-                    items.Add(OmniItem.Header($"FILE · {found.Files.Count}{more} KẾT QUẢ · {found.ElapsedMs} ms"));
+                    items.Add(OmniItem.Header($"FILE · {found.Files.Length}{more} KẾT QUẢ · {found.ElapsedMs} ms"));
                     items.AddRange(found.Files.Select(OmniItem.FromHit));
                 }
-                if (found.Folders.Count > 0)
+                if (found.Folders.Length > 0)
                 {
                     items.Add(OmniItem.Header("THƯ MỤC"));
                     items.AddRange(found.Folders.Select(OmniItem.FromHit));
@@ -196,7 +196,7 @@ public sealed partial class Omnibar : UserControl
         Results.Visibility = Visibility.Collapsed;
     }
 
-    private void RenderChips(List<FilterChip> chips)
+    private void RenderChips(FilterChip[] chips)
     {
         Chips.Items.Clear();
         foreach (var chip in chips)

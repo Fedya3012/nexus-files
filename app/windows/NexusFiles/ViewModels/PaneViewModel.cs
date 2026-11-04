@@ -13,7 +13,7 @@ public sealed class PaneViewModel : ObservableObject, IDisposable
     private readonly Stack<string> _back = new();
     private readonly Stack<string> _forward = new();
     private ObservableCollection<FileItem> _items = [];
-    private List<FileEntry> _entries = [];
+    private FileEntry[] _entries = [];
     private string _currentPath = "";
     private ViewMode _viewMode;
     private SortOptions _sort;
@@ -199,9 +199,9 @@ public sealed class PaneViewModel : ObservableObject, IDisposable
         var folders = Items.Where(i => i.IsDir).Take(400).ToList();
         if (folders.Count == 0) return;
         var dir = CurrentPath;
-        var counts = await Task.Run(() => NexusNative.ChildCounts(dir, folders.Select(f => f.Name).ToList()));
+        var counts = await Task.Run(() => NexusNative.ChildCounts(dir, folders.Select(f => f.Name).ToArray()));
         if (gen != _generation) return;
-        for (int i = 0; i < folders.Count && i < counts.Count; i++)
+        for (int i = 0; i < folders.Count && i < counts.Length; i++)
         {
             if (counts[i] is uint n) folders[i].SizeText = Format.Items((int)n);
         }
@@ -216,7 +216,7 @@ public sealed class PaneViewModel : ObservableObject, IDisposable
     public void ApplySort(SortOptions sort)
     {
         Sort = sort;
-        if (_entries.Count == 0) return;
+        if (_entries.Length == 0) return;
         _entries = NexusNative.SortEntries(_entries, sort);
         var keep = Items.ToDictionary(i => i.Name, StringComparer.Ordinal);
         Items = new ObservableCollection<FileItem>(_entries.Select(e =>
