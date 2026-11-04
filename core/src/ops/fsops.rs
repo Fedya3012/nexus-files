@@ -276,12 +276,33 @@ pub fn remove_any(p: &Path) {
     }
 }
 
+/// Ids of the items in the trash at one moment.
+#[derive(Default)]
+pub struct TrashSnapshot(std::collections::HashSet<std::ffi::OsString>);
+
+impl TrashSnapshot {
+    #[cfg(any(windows, all(unix, not(target_os = "macos"), not(target_os = "ios"), not(target_os = "android"))))]
+    pub fn take() -> Self {
+        TrashSnapshot(trash::os_limited::list().map(|v| v.into_iter().map(|i| i.id).collect()).unwrap_or_default())
+    }
+
+    #[cfg(not(any(windows, all(unix, not(target_os = "macos"), not(target_os = "ios"), not(target_os = "android")))))]
+    pub fn take() -> Self {
+        TrashSnapshot::default()
+    }
+
+    #[allow(dead_code)]
+    fn contains(&self, id: &std::ffi::OsStr) -> bool {
+        self.0.contains(id)
+    }
+}
+
 pub fn trash_one(p: &Path) -> Result<()> {
     trash::delete(p).map_err(|e| NexusError::Io { path: p.display().to_string(), message: e.to_string() })
 }
 
 #[cfg(any(windows, all(unix, not(target_os = "macos"), not(target_os = "ios"), not(target_os = "android"))))]
-pub fn restore_trashed(original: &Path, trashed_at_ms: i64) -> Result<()> {
+pub fn restore_trashed(original: &Path, trashed_at_ms: i64, snapshot: &TrashSnapshot) -> Result<()> {
     let err = |m: String| NexusError::Io { path: original.display().to_string(), message: m };
     if exists(original) {
         return Err(NexusError::AlreadyExists { path: original.display().to_string() });
@@ -292,6 +313,9 @@ pub fn restore_trashed(original: &Path, trashed_at_ms: i64) -> Result<()> {
     let since = trashed_at_ms / 1000 - 60;
     let item = items
         .into_iter()
+        // Only items that were already in the trash when the undo began: an undo that
+        // first trashes a newer copy with the same name must not restore that copy.
+        .filter(|i| snapshot.contains(&i.id))
         .filter(|i| i.name == name && same_dir(&i.original_parent, parent) && i.time_deleted >= since)
         .max_by_key(|i| i.time_deleted)
         .ok_or_else(|| err("không còn trong Thùng rác".into()))?;
@@ -299,7 +323,7 @@ pub fn restore_trashed(original: &Path, trashed_at_ms: i64) -> Result<()> {
 }
 
 #[cfg(not(any(windows, all(unix, not(target_os = "macos"), not(target_os = "ios"), not(target_os = "android")))))]
-pub fn restore_trashed(original: &Path, _trashed_at_ms: i64) -> Result<()> {
+pub fn restore_trashed(original: &Path, _trashed_at_ms: i64, _snapshot: &TrashSnapshot) -> Result<()> {
     Err(NexusError::Io { path: original.display().to_string(), message: "khôi phục từ Thùng rác chưa hỗ trợ trên nền tảng này".into() })
 }
 

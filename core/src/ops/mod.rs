@@ -363,6 +363,11 @@ impl Engine {
             }
         };
         self.update(id, |s| s.files_total = actions.len() as u64);
+        let snapshot = if actions.iter().any(|a| matches!(a, UndoAction::RestoreTrashed { .. })) {
+            fsops::TrashSnapshot::take()
+        } else {
+            fsops::TrashSnapshot::default()
+        };
         for a in actions.iter().rev() {
             if p.cancelled() {
                 break;
@@ -383,7 +388,7 @@ impl Engine {
                     .map(|_| out.results.push(original.clone()))
                 }
                 UndoAction::RestoreTrashed { original, trashed_at_ms } => {
-                    fsops::restore_trashed(Path::new(original), *trashed_at_ms).map(|_| out.results.push(original.clone()))
+                    fsops::restore_trashed(Path::new(original), *trashed_at_ms, &snapshot).map(|_| out.results.push(original.clone()))
                 }
             };
             if let Err(e) = r {
